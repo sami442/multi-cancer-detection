@@ -29,5 +29,34 @@ learning techniques.
 | Ovarian Cancer | - | - | - |
 
 *(Results will be updated after training)*
+## 🛠️ Technologies Used
+- Python 3.8+
+- TensorFlow / Keras
+- Scikit-learn
+- Pandas & NumPy
+- Matplotlib & Seaborn
+- Streamlit
+
+## 🚀 How to Run
+1. Clone the repository
+```bash
+git clone https://github.com/sami442/multi-cancer-detection.git
+```
+2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+3. Run the app
+```bash
+streamlit run app.py
+```
+
+## 👩‍💻 Author
+**Samina Mazhar**
+- GitHub: [@sami442](https://github.com/sami442)
+- Hugging Face: [mazharsamina26](https://huggingface.co/mazharsamina26)
+
+## 📄 License
+This project is licensed under the MIT License.
 
 ## 🗂️ Project Structure

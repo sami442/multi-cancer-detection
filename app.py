@@ -1,4 +1,9 @@
-@st.cache_resource
+import streamlit as st
+import numpy as np
+import pickle
+import os
+import requests
+from io import BytesIO
 def load_models():
     try:
         import os

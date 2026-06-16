@@ -1,129 +1,236 @@
 import streamlit as st
 import numpy as np
 import pickle
-import requests
-from io import BytesIO
 
 # Page config
 st.set_page_config(
-    page_title="Multi-Cancer Detection AI",
-    page_icon="🏥",
+    page_title="CancerShield AI",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS - completely different from brain tumor app
 st.markdown("""
 <style>
+    /* White/Light theme - opposite of brain tumor */
     .stApp {
-        background: linear-gradient(135deg, 
-            #0a0a1a 0%, #0d1b2a 50%, #0a0a1a 100%);
-        color: white;
+        background: #f8f9fa;
+        color: #2c3e50;
     }
-    .metric-card {
-        background: linear-gradient(135deg, 
-            #1a1a2e, #16213e);
-        border: 1px solid #00d2ff33;
+    
+    /* Top navigation bar */
+    .nav-bar {
+        background: white;
+        padding: 1rem 2rem;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* Cancer type cards */
+    .cancer-card {
+        background: white;
         border-radius: 15px;
         padding: 1.5rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
         text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 2px solid transparent;
     }
-    .section-title {
-        color: #00d2ff;
-        font-size: 1.3rem;
-        font-weight: 700;
-        border-left: 3px solid #7b2ff7;
-        padding-left: 0.8rem;
+    
+    .cancer-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    /* Input cards */
+    .input-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
         margin-bottom: 1rem;
     }
-    .result-positive {
-        background: #ff000022;
-        border: 1px solid #ff000055;
-        border-radius: 10px;
-        padding: 1rem;
-        color: #ff6b6b;
+    
+    /* Result cards */
+    .result-danger {
+        background: linear-gradient(135deg, 
+            #ff6b6b, #ee5a24);
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
         text-align: center;
-        font-size: 1.2rem;
-        font-weight: 700;
+        box-shadow: 0 8px 25px rgba(255,107,107,0.4);
     }
-    .result-negative {
-        background: #00ff0022;
-        border: 1px solid #00ff0055;
-        border-radius: 10px;
-        padding: 1rem;
-        color: #6bff6b;
+    
+    .result-safe {
+        background: linear-gradient(135deg,
+            #6bff6b, #00b894);
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
         text-align: center;
-        font-size: 1.2rem;
-        font-weight: 700;
+        box-shadow: 0 8px 25px rgba(0,184,148,0.4);
     }
-    .divider {
-        height: 2px;
-        background: linear-gradient(90deg, 
-            #00d2ff, #7b2ff7);
+    
+    /* Metric cards */
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        text-align: center;
+        border-top: 4px solid;
+    }
+    
+    /* Section headers */
+    .section-header {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 3px solid #e74c3c;
+    }
+
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background: #2c3e50 !important;
+        color: white;
+    }
+
+    /* Button */
+    .stButton > button {
+        background: linear-gradient(135deg,
+            #e74c3c, #c0392b);
+        color: white;
         border: none;
-        margin: 2rem 0;
+        border-radius: 10px;
+        padding: 0.7rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        width: 100%;
+        box-shadow: 0 4px 15px rgba(231,76,60,0.4);
+    }
+
+    /* Tags */
+    .tag {
+        display: inline-block;
+        background: #edf2f7;
+        border-radius: 20px;
+        padding: 0.3rem 1rem;
+        font-size: 0.85rem;
+        color: #2c3e50;
+        margin: 0.2rem;
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # Header
 st.markdown("""
-<div style='text-align: center; padding: 2rem 0;'>
+<div style='background: white; padding: 2rem;
+border-radius: 20px; 
+box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+margin-bottom: 2rem; text-align: center;'>
     <p style='font-size: 3rem; font-weight: 800;
-    background: linear-gradient(90deg, #00d2ff, #7b2ff7);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0;'>🏥 Multi-Cancer Detection AI</p>
-    <p style='color: #8892b0; font-size: 1.1rem;'>
-    AI-powered detection for Breast & Ovarian Cancer
+    color: #e74c3c; margin: 0;'>
+    🛡️ CancerShield AI</p>
+    <p style='color: #7f8c8d; font-size: 1.1rem;
+    margin: 0.5rem 0;'>
+    Advanced AI-Powered Cancer Detection System
     </p>
+    <div style='margin-top: 1rem;'>
+        <span class='tag'>🎗️ Breast Cancer</span>
+        <span class='tag'>🔬 Ovarian Cancer</span>
+        <span class='tag'>🧠 Brain Tumor</span>
+        <span class='tag'>🤖 AI Powered</span>
+        <span class='tag'>⚕️ Medical Grade</span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
-
-st.markdown("<div class='divider'></div>",
-    unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
     st.markdown("""
-    <div style='text-align: center;'>
-        <p style='font-size: 1.3rem; font-weight: 700;
-        background: linear-gradient(90deg, #00d2ff, #7b2ff7);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;'>
-        🏥 Cancer Detection AI</p>
+    <div style='text-align: center; padding: 1rem;'>
+        <p style='font-size: 1.8rem;'>🛡️</p>
+        <p style='font-size: 1.2rem; font-weight: 700;
+        color: white;'>CancerShield AI</p>
+        <p style='color: #bdc3c7; font-size: 0.9rem;'>
+        Early Detection Saves Lives</p>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     st.markdown("""
-    <div style='background: linear-gradient(135deg, 
-        #1a1a2e, #16213e);
-        border: 1px solid #00d2ff33;
-        border-radius: 10px; padding: 1rem;'>
-        <p style='color: #00d2ff; font-weight: 600;'>
-        📊 Model Performance</p>
-        <p style='color: #ccd6f6;'>
-        🎗️ Breast Cancer: <b>98.25%</b></p>
-        <p style='color: #ccd6f6;'>
-        🔬 Ovarian Cancer: <b>87.50%</b></p>
-        <p style='color: #ccd6f6;'>
-        🧠 Brain Tumor: <b>99.37%</b></p>
+    <p style='color: #e74c3c; font-weight: 600;
+    font-size: 0.9rem;'>📊 MODEL ACCURACY</p>
+    """, unsafe_allow_html=True)
+
+    # Accuracy bars
+    st.markdown("""
+    <div style='margin: 0.5rem 0;'>
+        <p style='color: #ecf0f1; margin: 0;
+        font-size: 0.85rem;'>🎗️ Breast Cancer</p>
+        <div style='background: #34495e;
+        border-radius: 10px; height: 8px;'>
+            <div style='background: #e74c3c;
+            width: 98%; height: 8px;
+            border-radius: 10px;'></div>
+        </div>
+        <p style='color: #e74c3c; margin: 0;
+        font-size: 0.85rem; text-align: right;'>
+        98.25%</p>
+    </div>
+    <div style='margin: 0.5rem 0;'>
+        <p style='color: #ecf0f1; margin: 0;
+        font-size: 0.85rem;'>🔬 Ovarian Cancer</p>
+        <div style='background: #34495e;
+        border-radius: 10px; height: 8px;'>
+            <div style='background: #e67e22;
+            width: 87%; height: 8px;
+            border-radius: 10px;'></div>
+        </div>
+        <p style='color: #e67e22; margin: 0;
+        font-size: 0.85rem; text-align: right;'>
+        87.50%</p>
+    </div>
+    <div style='margin: 0.5rem 0;'>
+        <p style='color: #ecf0f1; margin: 0;
+        font-size: 0.85rem;'>🧠 Brain Tumor</p>
+        <div style='background: #34495e;
+        border-radius: 10px; height: 8px;'>
+            <div style='background: #27ae60;
+            width: 99%; height: 8px;
+            border-radius: 10px;'></div>
+        </div>
+        <p style='color: #27ae60; margin: 0;
+        font-size: 0.85rem; text-align: right;'>
+        99.37%</p>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     st.markdown("""
-    <div style='background: linear-gradient(135deg,
-        #1a1a2e, #16213e);
-        border: 1px solid #7b2ff733;
-        border-radius: 10px; padding: 1rem;'>
-        <p style='color: #7b2ff7; font-weight: 600;'>
-        👩‍💻 Developer</p>
-        <p style='color: #ccd6f6;'><b>Samina Mazhar</b></p>
-        <p style='color: #8892b0;'>BS Artificial Intelligence</p>
+    <div style='background: #34495e;
+    border-radius: 10px; padding: 1rem;'>
+        <p style='color: #e74c3c; font-weight: 600;
+        margin: 0; font-size: 0.9rem;'>
+        👩‍💻 DEVELOPER</p>
+        <p style='color: white; font-weight: 700;
+        margin: 0.3rem 0;'>Samina Mazhar</p>
+        <p style='color: #bdc3c7; font-size: 0.8rem;
+        margin: 0;'>BS Artificial Intelligence</p>
+        <p style='color: #bdc3c7; font-size: 0.8rem;
+        margin: 0;'>Islamia University Bahawalpur</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -131,10 +238,12 @@ with st.sidebar:
     st.markdown("""
     <div style='text-align: center;'>
         <a href='https://github.com/sami442'
-        style='color: #00d2ff;'>🐙 GitHub</a>
-        &nbsp;|&nbsp;
+        style='color: #e74c3c;
+        text-decoration: none;'>🐙 GitHub</a>
+        &nbsp;&nbsp;
         <a href='https://huggingface.co/mazharsamina26'
-        style='color: #7b2ff7;'>🤗 HuggingFace</a>
+        style='color: #e67e22;
+        text-decoration: none;'>🤗 HuggingFace</a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -142,18 +251,21 @@ with st.sidebar:
 @st.cache_resource
 def load_models():
     try:
-        with open('models/breast_cancer_model.pkl', 'rb') as f:
+        with open('models/breast_cancer_model.pkl',
+                  'rb') as f:
             breast_model = pickle.load(f)
-        with open('models/breast_cancer_scaler.pkl', 'rb') as f:
+        with open('models/breast_cancer_scaler.pkl',
+                  'rb') as f:
             breast_scaler = pickle.load(f)
-        with open('models/ovarian_cancer_model.pkl', 'rb') as f:
+        with open('models/ovarian_cancer_model.pkl',
+                  'rb') as f:
             ovarian_model = pickle.load(f)
-        with open('models/ovarian_cancer_scaler.pkl', 'rb') as f:
+        with open('models/ovarian_cancer_scaler.pkl',
+                  'rb') as f:
             ovarian_scaler = pickle.load(f)
         return breast_model, breast_scaler, \
                ovarian_model, ovarian_scaler, True
     except Exception as e:
-        st.sidebar.error(f"Error: {e}")
         return None, None, None, None, False
 
 breast_model, breast_scaler, \
@@ -162,46 +274,46 @@ models_loaded = load_models()
 
 if models_loaded:
     st.sidebar.markdown("""
-    <div style='background: #00ff0011;
-    border: 1px solid #00ff0055;
+    <div style='background: #27ae60;
     border-radius: 8px; padding: 0.5rem;
-    text-align: center; color: #6bff6b;
-    margin-top: 1rem;'>
-    ✅ All Models Ready
+    text-align: center; color: white;
+    margin-top: 1rem; font-weight: 600;'>
+    ✅ All Models Loaded
     </div>""", unsafe_allow_html=True)
 else:
-    st.sidebar.warning("⚠️ Models not found!")
+    st.sidebar.error("⚠️ Models not found!")
 
-# Cancer Type Selection
+# Cancer Selection
 st.markdown("""
-<p class='section-title'>🔬 Select Cancer Type</p>
+<p class='section-header'>🔬 Select Detection Type</p>
 """, unsafe_allow_html=True)
 
 cancer_type = st.radio(
     "",
-    ["🎗️ Breast Cancer Detection",
-     "🔬 Ovarian Cancer Detection",
-     "🧠 Brain Tumor Detection"],
+    ["🎗️ Breast Cancer",
+     "🔬 Ovarian Cancer",
+     "🧠 Brain Tumor"],
     horizontal=True
 )
 
-st.markdown("<div class='divider'></div>",
-    unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 
-# Breast Cancer Detection
-if cancer_type == "🎗️ Breast Cancer Detection":
+# Breast Cancer
+if cancer_type == "🎗️ Breast Cancer":
     st.markdown("""
-    <p class='section-title'>
-    🎗️ Breast Cancer Detection</p>
-    <p style='color: #8892b0;'>
-    Enter cell nucleus measurements from
-    fine needle aspirate (FNA) of breast mass.
+    <div class='input-card'>
+    <p class='section-header'>
+    🎗️ Breast Cancer Analysis</p>
+    <p style='color: #7f8c8d;'>
+    Enter FNA measurements from breast mass biopsy
     </p>
+    </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
+        st.markdown("**📏 Mean Values**")
         mean_radius = st.number_input(
             'Mean Radius', 0.0, 30.0, 14.0)
         mean_texture = st.number_input(
@@ -221,9 +333,10 @@ if cancer_type == "🎗️ Breast Cancer Detection":
         mean_symmetry = st.number_input(
             'Mean Symmetry', 0.0, 0.4, 0.181)
         mean_fractal = st.number_input(
-            'Mean Fractal Dimension', 0.0, 0.1, 0.063)
+            'Mean Fractal', 0.0, 0.1, 0.063)
 
     with col2:
+        st.markdown("**📐 Standard Error**")
         se_radius = st.number_input(
             'SE Radius', 0.0, 3.0, 0.405)
         se_texture = st.number_input(
@@ -246,6 +359,7 @@ if cancer_type == "🎗️ Breast Cancer Detection":
             'SE Fractal', 0.0, 0.03, 0.004)
 
     with col3:
+        st.markdown("**⚠️ Worst Values**")
         worst_radius = st.number_input(
             'Worst Radius', 0.0, 40.0, 16.27)
         worst_texture = st.number_input(
@@ -267,80 +381,114 @@ if cancer_type == "🎗️ Breast Cancer Detection":
         worst_fractal = st.number_input(
             'Worst Fractal', 0.0, 0.3, 0.084)
 
-    if st.button('🔍 Analyze for Breast Cancer',
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button('🔍 Run Breast Cancer Analysis',
                  use_container_width=True):
         if models_loaded:
-            features = np.array([[
-                mean_radius, mean_texture,
-                mean_perimeter, mean_area,
-                mean_smoothness, mean_compactness,
-                mean_concavity, mean_concave_points,
-                mean_symmetry, mean_fractal,
-                se_radius, se_texture,
-                se_perimeter, se_area,
-                se_smoothness, se_compactness,
-                se_concavity, se_concave_points,
-                se_symmetry, se_fractal,
-                worst_radius, worst_texture,
-                worst_perimeter, worst_area,
-                worst_smoothness, worst_compactness,
-                worst_concavity, worst_concave_points,
-                worst_symmetry, worst_fractal
-            ]])
+            with st.spinner('Analyzing...'):
+                features = np.array([[
+                    mean_radius, mean_texture,
+                    mean_perimeter, mean_area,
+                    mean_smoothness, mean_compactness,
+                    mean_concavity, mean_concave_points,
+                    mean_symmetry, mean_fractal,
+                    se_radius, se_texture,
+                    se_perimeter, se_area,
+                    se_smoothness, se_compactness,
+                    se_concavity, se_concave_points,
+                    se_symmetry, se_fractal,
+                    worst_radius, worst_texture,
+                    worst_perimeter, worst_area,
+                    worst_smoothness, worst_compactness,
+                    worst_concavity, worst_concave_points,
+                    worst_symmetry, worst_fractal
+                ]])
 
-            scaled = breast_scaler.transform(features)
-            prediction = breast_model.predict(scaled)
-            probability = breast_model.predict_proba(
-                scaled)[0]
+                scaled = breast_scaler.transform(features)
+                pred = breast_model.predict(scaled)
+                prob = breast_model.predict_proba(scaled)[0]
 
-            st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_r1, col_r2, col_r3 = st.columns(3)
 
-            if prediction[0] == 0:
-                st.markdown(f"""
-                <div class='result-positive'>
-                ⚠️ MALIGNANT DETECTED<br>
-                <span style='font-size: 1.5rem;'>
-                Confidence: {probability[0]*100:.1f}%
-                </span>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class='result-negative'>
-                ✅ BENIGN - No Cancer Detected<br>
-                <span style='font-size: 1.5rem;'>
-                Confidence: {probability[1]*100:.1f}%
-                </span>
-                </div>
-                """, unsafe_allow_html=True)
+                with col_r1:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #e74c3c;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>DIAGNOSIS</p>
+                        <p style='color: {"#e74c3c" if pred[0]==0 else "#27ae60"};
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        {"⚠️ MALIGNANT" if pred[0]==0 else "✅ BENIGN"}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            st.markdown("""
-            <div style='background: #ffffff11;
-            border-radius: 8px; padding: 0.8rem;
-            color: #8892b0; font-size: 0.85rem;
-            margin-top: 1rem;'>
-            ⚕️ <b>Disclaimer:</b> For research only.
-            Consult a medical professional.
-            </div>
-            """, unsafe_allow_html=True)
+                with col_r2:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #3498db;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>CONFIDENCE</p>
+                        <p style='color: #3498db;
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        {max(prob)*100:.1f}%
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col_r3:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #9b59b6;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>MODEL</p>
+                        <p style='color: #9b59b6;
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        SVM
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.warning("⚕️ For research purposes only. "
+                          "Always consult a medical professional.")
         else:
             st.error("❌ Models not loaded!")
 
-# Ovarian Cancer Detection
-elif cancer_type == "🔬 Ovarian Cancer Detection":
+# Ovarian Cancer
+elif cancer_type == "🔬 Ovarian Cancer":
     st.markdown("""
-    <p class='section-title'>
-    🔬 Ovarian Cancer Detection</p>
-    <p style='color: #8892b0;'>
-    Enter patient biomarker values for analysis.
+    <div class='input-card'>
+    <p class='section-header'>
+    🔬 Ovarian Cancer Analysis</p>
+    <p style='color: #7f8c8d;'>
+    Enter patient biomarker values
     </p>
+    </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        age = st.number_input('Age', 20, 100, 50)
-        bmi = st.number_input('BMI', 10.0, 50.0, 23.0)
+        st.markdown("**🩺 Patient Information**")
+        age = st.number_input('Age (years)',
+                              20, 100, 50)
+        bmi = st.number_input('BMI (kg/m²)',
+                              10.0, 50.0, 23.0)
         glucose = st.number_input(
             'Glucose (mg/dL)', 50.0, 200.0, 92.0)
         leptin = st.number_input(
@@ -349,6 +497,7 @@ elif cancer_type == "🔬 Ovarian Cancer Detection":
             'Adiponectin (μg/mL)', 0.0, 50.0, 10.0)
 
     with col2:
+        st.markdown("**🔬 Biomarker Values**")
         insulin = st.number_input(
             'Insulin (μU/mL)', 0.0, 60.0, 10.0)
         homa = st.number_input(
@@ -358,145 +507,207 @@ elif cancer_type == "🔬 Ovarian Cancer Detection":
         mcp1 = st.number_input(
             'MCP-1 (pg/dL)', 0.0, 2000.0, 500.0)
 
-    if st.button('🔍 Analyze for Ovarian Cancer',
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button('🔍 Run Ovarian Cancer Analysis',
                  use_container_width=True):
         if models_loaded:
-            features = np.array([[
-                age, bmi, glucose, insulin,
-                homa, leptin, adiponectin,
-                resistin, mcp1
-            ]])
+            with st.spinner('Analyzing biomarkers...'):
+                features = np.array([[
+                    age, bmi, glucose, insulin,
+                    homa, leptin, adiponectin,
+                    resistin, mcp1
+                ]])
 
-            scaled = ovarian_scaler.transform(features)
-            prediction = ovarian_model.predict(scaled)
-            probability = ovarian_model.predict_proba(
-                scaled)[0]
+                scaled = ovarian_scaler.transform(features)
+                pred = ovarian_model.predict(scaled)
+                prob = ovarian_model.predict_proba(scaled)[0]
 
-            st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                col_r1, col_r2, col_r3 = st.columns(3)
 
-            if prediction[0] == 1:
-                st.markdown(f"""
-                <div class='result-positive'>
-                ⚠️ CANCER INDICATORS DETECTED<br>
-                <span style='font-size: 1.5rem;'>
-                Confidence: {probability[1]*100:.1f}%
-                </span>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class='result-negative'>
-                ✅ NO CANCER INDICATORS<br>
-                <span style='font-size: 1.5rem;'>
-                Confidence: {probability[0]*100:.1f}%
-                </span>
-                </div>
-                """, unsafe_allow_html=True)
+                with col_r1:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #e67e22;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>DIAGNOSIS</p>
+                        <p style='color: {"#e74c3c" if pred[0]==1 else "#27ae60"};
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        {"⚠️ CANCER" if pred[0]==1 else "✅ HEALTHY"}
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            st.markdown("""
-            <div style='background: #ffffff11;
-            border-radius: 8px; padding: 0.8rem;
-            color: #8892b0; font-size: 0.85rem;
-            margin-top: 1rem;'>
-            ⚕️ <b>Disclaimer:</b> For research only.
-            Consult a medical professional.
-            </div>
-            """, unsafe_allow_html=True)
+                with col_r2:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #3498db;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>CONFIDENCE</p>
+                        <p style='color: #3498db;
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        {max(prob)*100:.1f}%
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                with col_r3:
+                    st.markdown(f"""
+                    <div style='background: white;
+                    border-radius: 15px; padding: 1.5rem;
+                    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+                    text-align: center;
+                    border-top: 4px solid #9b59b6;'>
+                        <p style='color: #7f8c8d; margin: 0;
+                        font-size: 0.9rem;'>MODEL</p>
+                        <p style='color: #9b59b6;
+                        font-size: 1.3rem; font-weight: 800;
+                        margin: 0.5rem 0;'>
+                        SVM
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.warning("⚕️ For research purposes only. "
+                          "Always consult a medical professional.")
         else:
             st.error("❌ Models not loaded!")
 
-# Brain Tumor Detection
-elif cancer_type == "🧠 Brain Tumor Detection":
+# Brain Tumor
+elif cancer_type == "🧠 Brain Tumor":
     st.markdown("""
-    <p class='section-title'>
-    🧠 Brain Tumor Detection</p>
-    <p style='color: #8892b0;'>
-    Upload a brain MRI scan for tumor segmentation.
-    </p>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div style='background: linear-gradient(135deg,
-        #1a1a2e, #16213e);
-        border: 1px solid #00d2ff33;
-        border-radius: 15px; padding: 2rem;
-        text-align: center;'>
-        <p style='color: #00d2ff; font-size: 1.2rem;
-        font-weight: 600;'>
-        🧠 Brain Tumor Segmentation</p>
-        <p style='color: #8892b0;'>
-        This feature uses our dedicated U-Net model
-        with 99.37% accuracy</p>
+    <div style='background: white;
+    border-radius: 20px; padding: 3rem;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    text-align: center;'>
+        <p style='font-size: 4rem; margin: 0;'>🧠</p>
+        <p style='font-size: 1.5rem; font-weight: 700;
+        color: #2c3e50; margin: 1rem 0;'>
+        Brain Tumor Segmentation</p>
+        <p style='color: #7f8c8d; margin-bottom: 2rem;'>
+        Our dedicated U-Net deep learning model analyzes
+        brain MRI scans with 99.37% accuracy</p>
+        <div style='display: flex;
+        justify-content: center; gap: 2rem;
+        margin-bottom: 2rem;'>
+            <div style='background: #f8f9fa;
+            border-radius: 10px; padding: 1rem 2rem;'>
+                <p style='color: #e74c3c; font-size: 1.5rem;
+                font-weight: 800; margin: 0;'>99.37%</p>
+                <p style='color: #7f8c8d; margin: 0;
+                font-size: 0.85rem;'>Accuracy</p>
+            </div>
+            <div style='background: #f8f9fa;
+            border-radius: 10px; padding: 1rem 2rem;'>
+                <p style='color: #e74c3c; font-size: 1.5rem;
+                font-weight: 800; margin: 0;'>0.3147</p>
+                <p style='color: #7f8c8d; margin: 0;
+                font-size: 0.85rem;'>Dice Score</p>
+            </div>
+            <div style='background: #f8f9fa;
+            border-radius: 10px; padding: 1rem 2rem;'>
+                <p style='color: #e74c3c; font-size: 1.5rem;
+                font-weight: 800; margin: 0;'>U-Net</p>
+                <p style='color: #7f8c8d; margin: 0;
+                font-size: 0.85rem;'>Architecture</p>
+            </div>
+        </div>
         <a href='https://medical-image-segmentation-jc6hrzsdhjimse9d47n5uz.streamlit.app/'
         target='_blank'
-        style='background: linear-gradient(90deg,
-        #00d2ff, #7b2ff7);
-        color: white; padding: 0.8rem 2rem;
-        border-radius: 25px; text-decoration: none;
-        font-weight: 600; display: inline-block;
-        margin-top: 1rem;'>
-        🚀 Open Brain Tumor App
+        style='background: #e74c3c;
+        color: white; padding: 1rem 3rem;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 700; font-size: 1.1rem;
+        box-shadow: 0 4px 15px rgba(231,76,60,0.4);
+        display: inline-block;'>
+        🚀 Launch Brain Tumor App
         </a>
     </div>
     """, unsafe_allow_html=True)
 
-# Performance Metrics
-st.markdown("<div class='divider'></div>",
-    unsafe_allow_html=True)
+# Performance Section
+st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
-<p class='section-title'>📊 Model Performance</p>
+<p class='section-header'>📊 System Performance</p>
 """, unsafe_allow_html=True)
 
-col3, col4, col5 = st.columns(3)
+col3, col4, col5, col6 = st.columns(4)
 with col3:
     st.markdown("""
-    <div class='metric-card'>
-        <p style='color: #8892b0;'>🎗️ Breast Cancer</p>
-        <p style='color: #00d2ff; font-size: 2rem;
-        font-weight: 800;'>98.25%</p>
-        <p style='color: #6bff6b;'>SVM Classifier</p>
+    <div class='stat-card' style='border-color: #e74c3c;'>
+        <p style='color: #7f8c8d; margin: 0;
+        font-size: 0.85rem;'>BREAST CANCER</p>
+        <p style='color: #e74c3c; font-size: 2rem;
+        font-weight: 800; margin: 0.5rem 0;'>98.25%</p>
+        <p style='color: #27ae60; margin: 0;
+        font-size: 0.85rem;'>SVM Classifier</p>
     </div>
     """, unsafe_allow_html=True)
 with col4:
     st.markdown("""
-    <div class='metric-card'>
-        <p style='color: #8892b0;'>🔬 Ovarian Cancer</p>
-        <p style='color: #7b2ff7; font-size: 2rem;
-        font-weight: 800;'>87.50%</p>
-        <p style='color: #6bff6b;'>SVM Classifier</p>
+    <div class='stat-card' style='border-color: #e67e22;'>
+        <p style='color: #7f8c8d; margin: 0;
+        font-size: 0.85rem;'>OVARIAN CANCER</p>
+        <p style='color: #e67e22; font-size: 2rem;
+        font-weight: 800; margin: 0.5rem 0;'>87.50%</p>
+        <p style='color: #27ae60; margin: 0;
+        font-size: 0.85rem;'>SVM Classifier</p>
     </div>
     """, unsafe_allow_html=True)
 with col5:
     st.markdown("""
-    <div class='metric-card'>
-        <p style='color: #8892b0;'>🧠 Brain Tumor</p>
-        <p style='color: #00d2ff; font-size: 2rem;
-        font-weight: 800;'>99.37%</p>
-        <p style='color: #6bff6b;'>U-Net CNN</p>
+    <div class='stat-card' style='border-color: #27ae60;'>
+        <p style='color: #7f8c8d; margin: 0;
+        font-size: 0.85rem;'>BRAIN TUMOR</p>
+        <p style='color: #27ae60; font-size: 2rem;
+        font-weight: 800; margin: 0.5rem 0;'>99.37%</p>
+        <p style='color: #27ae60; margin: 0;
+        font-size: 0.85rem;'>U-Net CNN</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col6:
+    st.markdown("""
+    <div class='stat-card' style='border-color: #3498db;'>
+        <p style='color: #7f8c8d; margin: 0;
+        font-size: 0.85rem;'>CANCER TYPES</p>
+        <p style='color: #3498db; font-size: 2rem;
+        font-weight: 800; margin: 0.5rem 0;'>3</p>
+        <p style='color: #27ae60; margin: 0;
+        font-size: 0.85rem;'>Detected</p>
     </div>
     """, unsafe_allow_html=True)
 
 # Results Images
-st.markdown("<div class='divider'></div>",
-    unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("""
-<p class='section-title'>📈 Analysis Results</p>
+<p class='section-header'>📈 Model Analysis Results</p>
 """, unsafe_allow_html=True)
 
-col6, col7 = st.columns(2)
-with col6:
+col7, col8 = st.columns(2)
+with col7:
     st.markdown("""
-    <p style='color: #8892b0; text-align: center;'>
-    🎗️ Breast Cancer Analysis</p>
+    <p style='color: #7f8c8d; font-weight: 600;
+    text-align: center;'>🎗️ Breast Cancer Results</p>
     """, unsafe_allow_html=True)
     st.image(
         "https://raw.githubusercontent.com/sami442/multi-cancer-detection/main/results/breast_cancer_results.png",
         use_container_width=True
     )
-with col7:
+with col8:
     st.markdown("""
-    <p style='color: #8892b0; text-align: center;'>
-    🔬 Ovarian Cancer Analysis</p>
+    <p style='color: #7f8c8d; font-weight: 600;
+    text-align: center;'>🔬 Ovarian Cancer Results</p>
     """, unsafe_allow_html=True)
     st.image(
         "https://raw.githubusercontent.com/sami442/multi-cancer-detection/main/results/ovarian_cancer_results.png",
@@ -504,16 +715,31 @@ with col7:
     )
 
 # Footer
-st.markdown("<div class='divider'></div>",
-    unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("""
-<div style='text-align: center; color: #8892b0;'>
-    <p>Developed with ❤️ by
-    <b style='color: #00d2ff;'>Samina Mazhar</b> |
+<div style='background: #2c3e50;
+border-radius: 15px; padding: 2rem;
+text-align: center;'>
+    <p style='color: white; font-size: 1.1rem;
+    font-weight: 600; margin: 0;'>
+    Developed with ❤️ by
+    <span style='color: #e74c3c;'>Samina Mazhar</span>
+    </p>
+    <p style='color: #bdc3c7; margin: 0.5rem 0;'>
     BS Artificial Intelligence |
+    Islamia University Bahawalpur</p>
+    <p style='margin: 0;'>
     <a href='https://github.com/sami442'
-    style='color: #7b2ff7;'>GitHub</a> |
+    style='color: #e74c3c;
+    text-decoration: none;'>🐙 GitHub</a>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
     <a href='https://huggingface.co/mazharsamina26'
-    style='color: #00d2ff;'>Hugging Face</a></p>
+    style='color: #e67e22;
+    text-decoration: none;'>🤗 HuggingFace</a>
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    <a href='https://medical-image-segmentation-jc6hrzsdhjimse9d47n5uz.streamlit.app/'
+    style='color: #27ae60;
+    text-decoration: none;'>🧠 Brain Tumor App</a>
+    </p>
 </div>
 """, unsafe_allow_html=True)
